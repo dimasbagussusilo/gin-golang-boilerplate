@@ -4,7 +4,14 @@ Gin Golang Boilerplate
 Introduction
 ------------
 
-This project is a filesystem API implementation using Golang.
+This project is a Boilerplate for Restful-API using Gin-Gonic and GORM for faster development by providing several common functions, such as:
+- Service for every GORM model
+- JWT Auth
+- Logging
+- Swagger Documentation
+- Env loader
+- Response Templating
+- Etc.
 
 Prerequisites
 -------------
@@ -69,6 +76,11 @@ To generate API documentation using Swag, run:
     make generatedocs1
 
 This will create the documentation in the `docs/v1` directory.
+
+Contributors
+------------
+
+- Dimas Bagus Susilo  <dimasbagussusilo@gmail.com>
 
 Contributing
 ------------
