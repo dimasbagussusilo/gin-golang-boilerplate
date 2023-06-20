@@ -31,7 +31,7 @@ Installation
 
 2.  Change into the project directory:
 
-    cd filesystem-api
+    cd gin-golang-boilerplate
 
 3. Install project dependencies:
 
