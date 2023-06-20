@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dimasbagussusilo/gin-golang-boilerplate/config"
 	"github.com/dimasbagussusilo/gin-golang-boilerplate/database"
+	"github.com/dimasbagussusilo/gin-golang-boilerplate/database/seeders"
 	"github.com/dimasbagussusilo/gin-golang-boilerplate/server"
 	"github.com/dimasbagussusilo/gin-golang-boilerplate/service"
 )
@@ -15,7 +16,7 @@ func main() {
 		panic(fmt.Sprintf("Failed to load config! %v", err))
 	}
 
-	// Initialize database
+	// Initialize database and auto migration
 	db, err := database.Init(c)
 	if err != nil {
 		panic(err)
@@ -23,6 +24,9 @@ func main() {
 
 	// Initialize service
 	s := service.Init(db)
+
+	// Initialize seeders
+	seeders.Execute(c, s)
 
 	//	Initialize server
 	err = server.Init(c, db, s)
