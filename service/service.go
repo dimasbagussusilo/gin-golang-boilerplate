@@ -21,7 +21,7 @@ type IRepository interface {
 	Create(form Entity, dbTransaction *gorm.DB) (Entity, error)
 	Update(id int, form Entity, dbTransaction *gorm.DB) (Entity, error)
 	Delete(id int, dbTransaction *gorm.DB) error
-	CustomQuery() *gorm.DB
+	CustomQuery() map[string]any
 }
 
 func NewRepository(entity Entity, db *gorm.DB) IRepository {
@@ -112,6 +112,6 @@ func (r *Repository) Delete(id int, dbTransaction *gorm.DB) error {
 	return nil
 }
 
-func (r *Repository) CustomQuery() *gorm.DB {
-	return r.db
+func (r *Repository) CustomQuery() map[string]any {
+	return nil
 }
