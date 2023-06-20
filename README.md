@@ -5,12 +5,13 @@ Introduction
 ------------
 
 This project is a Boilerplate for Restful-API using Gin-Gonic and GORM for faster development by providing several common functions, such as:
-- Service for every GORM model
+- Service repository for every database model
 - JWT Auth
 - Logging
 - Swagger Documentation
 - Env loader
 - Response Templating
+- Migration & Seeder
 - Etc.
 
 Prerequisites
@@ -26,7 +27,7 @@ Installation
 
 1.  Clone the repository:
 
-    git clone https://github.com/dbsSensei/filesystem-api.git
+    git clone https://github.com/dimasbagusussilo/filesystem-api.git
 
 2.  Change into the project directory:
 
@@ -36,7 +37,7 @@ Installation
 
    make deps
 
-4. Rename file ```app.env.example``` to ```app.env```
+4. Rename file ```.env.example``` to ```.env```
 
 Usage
 -----
@@ -75,7 +76,28 @@ To generate API documentation using Swag, run:
 
     make generatedocs1
 
-This will create the documentation in the `docs/v1` directory.
+This will create the documentation in the `docs/v1/` directory.
+
+### Additional Migration
+
+To generate additional database migration file run:
+
+    make migrationcreate
+
+This will create the migration file in the `database/migrations/` directory.
+
+We can run migration with [Golang Migrate](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate)
+we can install with this command (mac):
+
+    brew install golang-migrate
+
+Then we can run up migration with (we need setup credentials in `Makefile`): 
+    
+    make migrateup
+
+Same as up migration, we can run down migration with:
+
+    make migratedown
 
 Contributors
 ------------
