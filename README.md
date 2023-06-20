@@ -27,7 +27,7 @@ Installation
 
 1.  Clone the repository:
 
-    git clone https://github.com/dimasbagusussilo/filesystem-api.git
+    git clone https://github.com/dimasbagusussilo/gin-golang-boilerplate.git
 
 2.  Change into the project directory:
 
