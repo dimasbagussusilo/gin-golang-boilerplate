@@ -38,6 +38,22 @@ definitions:
     - name
     - password
     type: object
+  forms.SignupResponse:
+    properties:
+      email:
+        maxLength: 120
+        type: string
+      name:
+        maxLength: 120
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
   forms.WhoAmIResponse:
     properties:
       email:
@@ -55,8 +71,16 @@ definitions:
       message:
         type: string
       status:
-        type: string
+        $ref: '#/definitions/utils.ResponseStatus'
     type: object
+  utils.ResponseStatus:
+    enum:
+    - success
+    - error
+    type: string
+    x-enum-varnames:
+    - ResponseStatusSuccess
+    - ResponseStatusError
 info:
   contact:
     email: dimasbagussusilo@gmail.com
@@ -134,7 +158,7 @@ paths:
             - $ref: '#/definitions/utils.Response'
             - properties:
                 data:
-                  type: object
+                  $ref: '#/definitions/forms.SignupResponse'
               type: object
         "400":
           description: Bad Request
@@ -157,6 +181,60 @@ paths:
       summary: Signup user.
       tags:
       - Auth
+  /api/v1/users:
+    get:
+      consumes:
+      - '*/*'
+      description: get all users' data.
+      parameters:
+      - default: 1
+        description: Page
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Page Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Search
+        in: query
+        name: search
+        type: string
+      - description: Email
+        in: query
+        name: email
+        type: string
+      - description: Order by
+        in: query
+        name: order_by
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.Response'
+            - properties:
+                data:
+                  type: object
+              type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Show all user.
+      tags:
+      - Users
   /api/v1/users/me:
     get:
       consumes:

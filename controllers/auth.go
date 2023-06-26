@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dimasbagussusilo/gin-golang-boilerplate/service"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"net/http"
 	"strings"
 	"time"
@@ -37,7 +38,7 @@ func NewAuthController(config *config.Config, db *gorm.DB, s *service.Services) 
 // @Accept application/json
 // @Param request body forms.SignupRequest true "request body"
 // @Produce json
-// @Success 200 {object} utils.Response{data=object}
+// @Success 200 {object} utils.Response{data=forms.SignupResponse}
 // @Failure 400 {object} utils.Response{data=object}
 // @Failure 500 {object} utils.Response{data=object}
 // @Router /api/v1/auth/signup [post]
@@ -52,7 +53,7 @@ func (ac *AuthController) Signup(ctx *gin.Context) {
 		hashedPassword, _ := utils.HashPassword(input.Password)
 		input.Password = hashedPassword
 
-		createdUser, err := ac.s.UserService.Create(&models.User{
+		createdUser, err := ac.s.UserService.Create(ctx, &models.User{
 			Name:     input.Name,
 			Email:    input.Email,
 			Password: input.Password,
@@ -75,7 +76,13 @@ func (ac *AuthController) Signup(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, utils.ResponseData(utils.ResponseStatusSuccess, "success create user", nil))
+	res := forms.SignupResponse{
+		Name:     input.Name,
+		Email:    input.Email,
+		Password: input.Password,
+	}
+
+	ctx.JSON(http.StatusCreated, utils.ResponseData(utils.ResponseStatusSuccess, "success create user", res))
 }
 
 // Signin godoc
@@ -89,48 +96,53 @@ func (ac *AuthController) Signup(ctx *gin.Context) {
 // @Failure 400 {object} utils.Response{data=object}
 // @Failure 500 {object} utils.Response{data=object}
 // @Router /api/v1/auth/signin [post]
-func (ac *AuthController) Signin(c *gin.Context) {
+func (ac *AuthController) Signin(ctx *gin.Context) {
 	cfg, _ := config.LoadConfig(".")
 	tokenMaker, _ := utils.NewJWTMaker(cfg.TokenSymmetricKey)
 
 	var input forms.SigninRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, err.Error(), nil))
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, err.Error(), nil))
 		return
 	}
 
-	queryOptions := func(query *gorm.DB) *gorm.DB {
-		// Filter
-		query.Where("LOWER(email) = ?", strings.ToLower(input.Email))
+	filterQuery := map[string]any{
+		"custom_fields": []clause.Expr{
+			gorm.Expr("LOWER(email) LIKE ?", strings.ToLower(input.Email)),
+		},
+	}
 
-		// Sorter
-		queryOrder := c.Query("order_by")
-		query = utils.SortBy(queryOrder, query)
-
-		return query
+	optionsQuery := &service.OptionQuery{
+		Filter: filterQuery,
+		Search: nil,
+		Page:   1,
+		Limit:  1,
 	}
 
 	var users []models.User
-	_, err := ac.s.UserService.FindAll(&users, 1, 1, queryOptions, nil)
+	_, err := ac.s.UserService.FindAll(ctx, &users, optionsQuery, nil)
 	if err != nil {
 		return
 	}
 
-	user := users[0]
-
-	if user.ID == 0 {
-		c.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, "invalid email or password", nil))
+	if len(users) == 0 {
+		ctx.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, "invalid email or password", nil))
 		return
 	}
 
+	var user models.User
+	if len(users) > 0 {
+		user = users[0]
+	}
+
 	//if user.Status == models.UserStatusPending {
-	//	c.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, "please verify your account", nil))
+	//	ctx.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, "please verify your account", nil))
 	//	return
 	//}
 
 	err = utils.CheckPassword(input.Password, user.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, "invalid email or password", nil))
+		ctx.JSON(http.StatusBadRequest, utils.ResponseData(utils.ResponseStatusError, "invalid email or password", nil))
 		return
 	}
 
@@ -144,7 +156,7 @@ func (ac *AuthController) Signin(c *gin.Context) {
 		cfg.RefreshTokenDuration,
 	)
 
-	_, err = ac.s.TokenService.Create(&models.Token{
+	_, err = ac.s.TokenService.Create(ctx, &models.Token{
 		ID:           refreshPayload.Id,
 		UserID:       user.ID,
 		RefreshToken: refreshToken,
@@ -154,7 +166,7 @@ func (ac *AuthController) Signin(c *gin.Context) {
 		UpdatedAt:    time.Time{},
 	}, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, utils.ResponseData(utils.ResponseStatusError, err.Error(), nil))
+		ctx.JSON(http.StatusInternalServerError, utils.ResponseData(utils.ResponseStatusError, err.Error(), nil))
 	}
 
 	rsp := forms.SigninResponse{
@@ -165,5 +177,5 @@ func (ac *AuthController) Signin(c *gin.Context) {
 		RefreshTokenExpiresAt: refreshPayload.ExpiredAt,
 	}
 
-	c.JSON(http.StatusCreated, utils.ResponseData(utils.ResponseStatusSuccess, "success signin user", rsp))
+	ctx.JSON(http.StatusCreated, utils.ResponseData(utils.ResponseStatusSuccess, "success signin user", rsp))
 }

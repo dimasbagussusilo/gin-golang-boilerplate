@@ -3,7 +3,10 @@ package service
 import (
 	"fmt"
 	"github.com/dimasbagussusilo/gin-golang-boilerplate/utils"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"strings"
 )
 
 type Entity interface {
@@ -16,12 +19,20 @@ type Repository struct {
 }
 
 type IRepository interface {
-	FindOne(entity Entity, id int, dbTransaction *gorm.DB) error
-	FindAll(entities any, pageNum int, pageSize int, options func(db *gorm.DB) *gorm.DB, dbTransaction *gorm.DB) (*utils.Pagination, error)
-	Create(form Entity, dbTransaction *gorm.DB) (Entity, error)
-	Update(id int, form Entity, dbTransaction *gorm.DB) (Entity, error)
-	Delete(id int, dbTransaction *gorm.DB) error
-	CustomQuery() *gorm.DB
+	FindOne(ctx *gin.Context, entity Entity, id int, dbTransaction *gorm.DB) error
+	FindAll(ctx *gin.Context, entities any, options *OptionQuery, dbTransaction *gorm.DB) (*utils.Pagination, error)
+	Create(ctx *gin.Context, form Entity, dbTransaction *gorm.DB) (Entity, error)
+	Update(ctx *gin.Context, id int, form Entity, dbTransaction *gorm.DB) (Entity, error)
+	Delete(ctx *gin.Context, id int, dbTransaction *gorm.DB) error
+	CustomQuery(ctx *gin.Context) *gorm.DB
+}
+
+type OptionQuery struct {
+	Page   int
+	Limit  int
+	Filter map[string]any
+	Search []string
+	Order  string
 }
 
 func NewRepository(entity Entity, db *gorm.DB) IRepository {
@@ -38,7 +49,7 @@ func (r *Repository) getDB(dbTransaction *gorm.DB) *gorm.DB {
 	return r.db
 }
 
-func (r *Repository) FindOne(entity Entity, id int, dbTransaction *gorm.DB) error {
+func (r *Repository) FindOne(ctx *gin.Context, entity Entity, id int, dbTransaction *gorm.DB) error {
 	db := r.getDB(dbTransaction)
 
 	err := db.Model(r.entity).Where("id = ?", id).First(entity).Error
@@ -49,25 +60,73 @@ func (r *Repository) FindOne(entity Entity, id int, dbTransaction *gorm.DB) erro
 	return nil
 }
 
-func (r *Repository) FindAll(entities any, pageNum int, pageSize int, options func(db *gorm.DB) *gorm.DB, dbTransaction *gorm.DB) (*utils.Pagination, error) {
+func (r *Repository) FindAll(ctx *gin.Context, entities any, options *OptionQuery, dbTransaction *gorm.DB) (*utils.Pagination, error) {
+	page := 1
+	limit := 10
+
 	db := r.getDB(dbTransaction)
 
 	var count int64
 	query := db.Model(r.entity)
-	query = options(query)
+
+	if options != nil {
+		if options.Page != 0 {
+			page = options.Page
+		}
+		if options.Limit != 0 {
+			limit = options.Limit
+		}
+
+		if len(options.Filter) != 0 {
+			if customFields, ok := options.Filter["custom_fields"]; ok {
+				for i := range customFields.([]clause.Expr) {
+					query = query.Where(customFields.([]clause.Expr)[i])
+				}
+				delete(options.Filter, "custom_fields")
+			}
+			query = query.Where(options.Filter)
+		}
+
+		searchParam := ctx.Query("search")
+		if searchParam != "" {
+			if options.Search != nil {
+				var searchQueries string
+				for i := range options.Search {
+					if strings.ContainsAny(searchParam, ";") {
+						searchParam = strings.Join(strings.Split(searchParam, ";"), "")
+					}
+
+					if i == 0 {
+						searchQueries += fmt.Sprintf("LOWER(%v) LIKE %v", options.Search[i], "'%"+strings.ToLower(searchParam)+"%'")
+					} else {
+						searchQueries += fmt.Sprintf(" OR LOWER(%v) LIKE %v", options.Search[i], "'%"+strings.ToLower(searchParam)+"%'")
+					}
+				}
+
+				query = query.Where(searchQueries)
+			}
+		}
+	}
+
 	query.Count(&count)
-	query = query.Limit(pageSize).Offset((pageNum - 1) * pageSize)
+
+	query = query.Limit(limit).Offset((page - 1) * limit)
+
+	if options != nil && options.Order != "" {
+		query = utils.SortBy(options.Order, query)
+	}
+
 	res := query.Find(entities)
 	if res.Error != nil {
 		fmt.Printf("error, %+v\n", res.Error)
 		return nil, res.Error
 	}
 
-	pagination := utils.Paginate(count, pageNum, pageSize)
+	pagination := utils.Paginate(count, page, limit)
 	return pagination, nil
 }
 
-func (r *Repository) Create(form Entity, dbTransaction *gorm.DB) (Entity, error) {
+func (r *Repository) Create(ctx *gin.Context, form Entity, dbTransaction *gorm.DB) (Entity, error) {
 	db := r.getDB(dbTransaction)
 
 	result := db.Table(r.entity.TableName()).Select("*").Create(form)
@@ -78,7 +137,7 @@ func (r *Repository) Create(form Entity, dbTransaction *gorm.DB) (Entity, error)
 	return form, nil
 }
 
-func (r *Repository) Update(id int, form Entity, dbTransaction *gorm.DB) (Entity, error) {
+func (r *Repository) Update(ctx *gin.Context, id int, form Entity, dbTransaction *gorm.DB) (Entity, error) {
 	db := r.getDB(dbTransaction)
 
 	entity := r.entity
@@ -95,7 +154,7 @@ func (r *Repository) Update(id int, form Entity, dbTransaction *gorm.DB) (Entity
 	return entity, nil
 }
 
-func (r *Repository) Delete(id int, dbTransaction *gorm.DB) error {
+func (r *Repository) Delete(ctx *gin.Context, id int, dbTransaction *gorm.DB) error {
 	db := r.getDB(dbTransaction)
 
 	entity := r.entity
@@ -112,6 +171,6 @@ func (r *Repository) Delete(id int, dbTransaction *gorm.DB) error {
 	return nil
 }
 
-func (r *Repository) CustomQuery() *gorm.DB {
+func (r *Repository) CustomQuery(ctx *gin.Context) *gorm.DB {
 	return r.db
 }

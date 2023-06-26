@@ -31,7 +31,7 @@ func (s Seed) User(c *config.Config, srv *service.Services) {
 	}
 
 	var totalUser int64
-	srv.UserService.CustomQuery().Count(&totalUser)
+	srv.UserService.CustomQuery(nil).Count(&totalUser)
 
 	if totalUser == 0 {
 		for _, user := range users {
@@ -43,13 +43,13 @@ func (s Seed) User(c *config.Config, srv *service.Services) {
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			}
-			_, err = srv.UserService.Create(userParams, nil)
+			_, err = srv.UserService.Create(nil, userParams, nil)
 			if err != nil {
 				fmt.Println("error while create seed data")
 				return
 			}
 		}
-		srv.UserService.CustomQuery().Count(&totalUser)
+		srv.UserService.CustomQuery(nil).Count(&totalUser)
 		if err != nil {
 			fmt.Println("error when get totalUser", err)
 		} else if int(totalUser) < len(users) {

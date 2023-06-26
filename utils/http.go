@@ -34,32 +34,32 @@ func ResponseData(status ResponseStatus, message string, data any) *Response {
 }
 
 type Pagination struct {
-	TotalItems int64
-	TotalPages int
-	PageSize   int
-	PageNum    int
-	HasPrev    bool
-	HasNext    bool
+	TotalItems int64 `json:"total_items"`
+	TotalPages int   `json:"total_pages"`
+	Page       int   `json:"page"`
+	Limit      int   `json:"limit"`
+	HasPrev    bool  `json:"has_prev"`
+	HasNext    bool  `json:"has_next"`
 }
 
-func Paginate(count int64, pageNum int, pageSize int) *Pagination {
+func Paginate(count int64, page int, limit int) *Pagination {
 	var pagination Pagination
 
 	pagination.TotalItems = count
-	pagination.PageSize = pageSize
-	pagination.PageNum = pageNum
+	pagination.Page = page
+	pagination.Limit = limit
 
-	if pageSize > 0 {
-		pagination.TotalPages = int(math.Ceil(float64(count) / float64(pageSize)))
+	if limit > 0 {
+		pagination.TotalPages = int(math.Ceil(float64(count) / float64(limit)))
 	} else {
 		pagination.TotalPages = 0
 	}
 
-	if pageNum > 1 {
+	if page > 1 {
 		pagination.HasPrev = true
 	}
 
-	if pageNum < pagination.TotalPages {
+	if page < pagination.TotalPages {
 		pagination.HasNext = true
 	}
 

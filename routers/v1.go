@@ -47,6 +47,7 @@ func V1(r *gin.Engine, c *config.Config, db *gorm.DB, s *service.Services) *gin.
 	authorizedV1 := r.Group("api/v1").Use(middlewares.AuthMiddleware(tokenMaker))
 
 	// User
+	authorizedV1.GET(usersEndpoint+"/", users.GetAllUsers)
 	authorizedV1.GET(usersEndpoint+"/me", users.Me)
 	return r
 }
